@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+celery
+redis
+python-telegram-bot
+google-genai
+pydantic
+python-dotenv

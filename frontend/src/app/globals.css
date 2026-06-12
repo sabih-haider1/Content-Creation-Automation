@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;600&display=swap');
+
+:root {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --panel-bg: #171717;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: 'Inter', sans-serif;
+}
+
+/* Custom pixel font styling for specific UI elements */
+.project-name {
+  font-family: 'Press Start 2P', cursive;
+  font-size: 0.75rem; 
+  color: #a3a3a3;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
