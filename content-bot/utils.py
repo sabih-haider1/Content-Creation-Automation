@@ -4,7 +4,7 @@ import re
 
 def extract_content_from_url(url: str) -> str:
     """
-    Fetches the URL and extracts the main text content.
+    Fetches the URL and extracts metadata and the main text content.
     """
     try:
         headers = {
@@ -15,22 +15,74 @@ def extract_content_from_url(url: str) -> str:
         
         soup = BeautifulSoup(response.text, 'html.parser')
         
-        # Remove script and style elements
-        for script in soup(["script", "style"]):
-            script.decompose()
+        # Extract title metadata
+        title = soup.title.string.strip() if soup.title else ""
+        og_title_tag = soup.find("meta", attrs={"property": "og:title"})
+        og_title = og_title_tag.get("content").strip() if og_title_tag and og_title_tag.get("content") else ""
+        final_title = og_title or title or "No Title"
 
-        # Get text
-        text = soup.get_text()
+        # Extract description metadata
+        meta_desc = ""
+        description_tag = (
+            soup.find("meta", attrs={"name": "description"}) or
+            soup.find("meta", attrs={"property": "og:description"}) or
+            soup.find("meta", attrs={"name": "twitter:description"})
+        )
+        if description_tag and description_tag.get("content"):
+            meta_desc = description_tag.get("content").strip()
 
-        # Break into lines and remove leading and trailing whitespace
-        lines = (line.strip() for line in text.splitlines())
-        # Break multi-headlines into a line each
+        # Remove irrelevant and non-content elements
+        garbage_selectors = [
+            "script", "style", "nav", "footer", "header", "aside", 
+            "iframe", "noscript", "form", ".ads", ".advertisement", 
+            "#footer", "#header", "#sidebar", ".comments", ".menu", ".nav"
+        ]
+        for selector in garbage_selectors:
+            for element in soup.select(selector):
+                element.decompose()
+
+        # Attempt to target primary content containers
+        main_content = ""
+        content_selectors = [
+            "article", "main", "[role='main']", ".post-content", 
+            ".entry-content", ".article-body", ".content", "#content"
+        ]
+        
+        content_element = None
+        for selector in content_selectors:
+            found = soup.select_one(selector)
+            if found:
+                content_element = found
+                break
+                
+        if content_element:
+            paragraphs = content_element.find_all(['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li'])
+            main_content = "\n".join(p.get_text().strip() for p in paragraphs if p.get_text().strip())
+        else:
+            body = soup.find('body')
+            if body:
+                paragraphs = body.find_all(['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li'])
+                main_content = "\n".join(p.get_text().strip() for p in paragraphs if p.get_text().strip())
+            else:
+                main_content = soup.get_text()
+
+        # Clean up line breaks and spacing
+        lines = (line.strip() for line in main_content.splitlines())
         chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
-        # Drop blank lines
-        text = '\n'.join(chunk for chunk in chunks if chunk)
+        main_content_cleaned = '\n'.join(chunk for chunk in chunks if chunk)
+
+        # Build clean structured output
+        summary_parts = []
+        summary_parts.append(f"Title: {final_title}")
+        if meta_desc:
+            summary_parts.append(f"Description: {meta_desc}")
+        if main_content_cleaned:
+            summary_parts.append(f"Content:\n{main_content_cleaned}")
+            
+        final_summary = "\n\n".join(summary_parts)
         
         # Limit text to 5000 characters to avoid huge prompts
-        return text[:5000]
+        return final_summary[:5000]
     except Exception as e:
         print(f"Error extracting content from URL {url}: {e}")
         return ""
