@@ -1,0 +1,8 @@
+fastapi==0.104.1
+uvicorn==0.24.0.post1
+python-telegram-bot==20.6
+pydantic==2.4.2
+pydantic-settings==2.0.3
+httpx==0.25.1
+loguru==0.7.2
+beautifulsoup4==4.12.2\n

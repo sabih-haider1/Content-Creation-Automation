@@ -1,0 +1,29 @@
+# Secrets and Environment Variables
+.env
+backend/.env
+content-bot/.env
+client_secret.json
+token.json
+tokens/
+
+# Databases
+*.db
+content.db
+content-bot/content.db
+
+# Logs
+*.log
+content-bot/*.log
+
+# Python
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
+
+# Outputs
+output/
+content-bot/output/
+assets/
+content-bot/assets/

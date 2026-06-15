@@ -1,6 +1,76 @@
 version: '3.8'
+
+x-base-service: &base-service
+  build:
+    context: .
+    dockerfile: Dockerfile
+  env_file: .env
+  volumes:
+    - .:/app
+  environment:
+    - PYTHONPATH=/app
+
 services:
-  redis:
-    image: redis:alpine
+  telegram-bot:
+    <<: *base-service
+    command: python apps/telegram-bot/bot.py
+    environment:
+      - PYTHONPATH=/app
+      - API_SERVER_URL=http://api-server:8000
+    depends_on:
+      - api-server
+    restart: always
+
+  api-server:
+    <<: *base-service
+    command: uvicorn apps.api_server.main:app --host 0.0.0.0 --port 8000
     ports:
-      - "6379:6379"
+      - "8000:8000"
+    environment:
+      - CLASSIFIER_URL=http://classifier:8000
+      - SCRIPT_GENERATOR_URL=http://script-generator:8000
+    depends_on:
+      - classifier
+      - script-generator
+
+  classifier:
+    <<: *base-service
+    command: uvicorn services.classifier.classifier:app --host 0.0.0.0 --port 8000
+
+  script-generator:
+    <<: *base-service
+    command: uvicorn services.script_generator.script_generator:app --host 0.0.0.0 --port 8000
+
+  web-search:
+    <<: *base-service
+    command: uvicorn services.web_search.search:app --host 0.0.0.0 --port 8000
+
+  asset-generator:
+    <<: *base-service
+    command: uvicorn services.asset_generator.image_gen:app --host 0.0.0.0 --port 8000
+
+  tts:
+    <<: *base-service
+    command: uvicorn services.tts.tts:app --host 0.0.0.0 --port 8000
+
+  subtitles:
+    <<: *base-service
+    command: uvicorn services.subtitles.subtitles:app --host 0.0.0.0 --port 8000
+
+  renderer:
+    <<: *base-service
+    command: uvicorn services.renderer.render:app --host 0.0.0.0 --port 8000
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: content_db
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"\n
