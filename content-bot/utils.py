@@ -1,6 +1,10 @@
 import requests
 from bs4 import BeautifulSoup
 import re
+import logging
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 def extract_content_from_url(url: str) -> str:
     """
@@ -84,7 +88,7 @@ def extract_content_from_url(url: str) -> str:
         # Limit text to 5000 characters to avoid huge prompts
         return final_summary[:5000]
     except Exception as e:
-        print(f"Error extracting content from URL {url}: {e}")
+        logger.error(f"Error extracting content from URL {url}: {e}")
         return ""
 
 def is_url(text: str) -> bool:

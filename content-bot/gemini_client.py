@@ -1,13 +1,17 @@
 import json
 import re
+import logging
 import google.generativeai as genai
 from config import GEMINI_API_KEY
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 # Configure Gemini
 try:
     genai.configure(api_key=GEMINI_API_KEY)
 except Exception as e:
-    print(f"Warning: Failed to configure Gemini API client: {e}")
+    logger.warning(f"Failed to configure Gemini API client: {e}")
 
 MODEL_NAME = "gemini-1.5-flash"
 
@@ -45,7 +49,7 @@ async def classify_prompt(user_prompt: str) -> dict:
         cleaned_text = clean_json_response(response.text)
         return json.loads(cleaned_text)
     except Exception as e:
-        print(f"[Warning] Gemini classify_prompt API error ({e}). Falling back to local default.")
+        logger.error(f"Gemini classify_prompt API error ({e}). Falling back to local default.")
         return {"niche": "educational", "content_type": "informative"}
 
 async def generate_script(user_prompt: str, niche: str, content_type: str, personality: str = None) -> dict:
@@ -139,7 +143,7 @@ async def generate_script(user_prompt: str, niche: str, content_type: str, perso
         cleaned_text = clean_json_response(response.text)
         return json.loads(cleaned_text)
     except Exception as e:
-        print(f"[Warning] Gemini generate_script API error ({e}). Falling back to test template.")
+        logger.error(f"Gemini generate_script API error ({e}). Falling back to test template.")
         return {
             "title": f"AI Insight ({personality})",
             "scenes": [

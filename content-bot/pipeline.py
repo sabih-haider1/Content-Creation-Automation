@@ -10,7 +10,7 @@ import tts
 import video_builder
 import utils
 
-async def run_content_pipeline(user_prompt: str, user_id: int, job_id: str = None, status_callback=None) -> dict:
+async def run_content_pipeline(user_prompt: str, user_id: int, job_id: str = None, personality: str = None, status_callback=None) -> dict:
     """
     Orchestrates the entire content bot pipeline using Gemini Veo 2.
     """
@@ -19,6 +19,8 @@ async def run_content_pipeline(user_prompt: str, user_id: int, job_id: str = Non
         
     await db.init_db()
     await db.create_job(job_id, user_id, user_prompt)
+    if personality:
+        await db.update_job(job_id, personality=personality)
     
     temp_dir = f"output/{job_id}_temp"
     os.makedirs(temp_dir, exist_ok=True)
@@ -49,7 +51,7 @@ async def run_content_pipeline(user_prompt: str, user_id: int, job_id: str = Non
         
         # Step 3: Script Generation
         await update_status("scripting")
-        script_data = await gemini_client.generate_script(processed_prompt, niche, content_type)
+        script_data = await gemini_client.generate_script(processed_prompt, niche, content_type, personality=personality)
         
         title = script_data.get("title", f"The Secrets of {user_prompt}")
         scenes = script_data.get("scenes", [])

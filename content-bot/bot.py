@@ -23,7 +23,7 @@ import youtube_uploader
 
 # Force environment variables for ALL libraries (including Google/YouTube)
 # socks5h is CRITICAL for remote DNS resolution via Tor
-TOR_PROXY = "socks5h://127.0.0.1:9150"
+TOR_PROXY = "socks5://127.0.0.1:9150"
 os.environ["HTTP_PROXY"] = TOR_PROXY
 os.environ["HTTPS_PROXY"] = TOR_PROXY
 os.environ["http_proxy"] = TOR_PROXY

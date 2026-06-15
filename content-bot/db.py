@@ -18,6 +18,7 @@ async def init_db():
                 status TEXT NOT NULL,
                 niche TEXT,
                 content_type TEXT,
+                personality TEXT,
                 title TEXT,
                 script TEXT,
                 hashtags TEXT,
