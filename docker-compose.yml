@@ -13,10 +13,14 @@ x-base-service: &base-service
 services:
   telegram-bot:
     <<: *base-service
-    command: python apps/telegram-bot/bot.py
+    command: python content-bot/bot.py
     environment:
       - PYTHONPATH=/app
       - API_SERVER_URL=http://api-server:8000
+    volumes:
+      - .:/app
+      - youtube_tokens:/app/content-bot/tokens
+      - video_output:/app/content-bot/output
     depends_on:
       - api-server
     restart: always
@@ -73,4 +77,9 @@ services:
   redis:
     image: redis:7
     ports:
-      - "6379:6379"\n
+      - "6379:6379"
+
+volumes:
+  youtube_tokens:
+  video_output:
+  postgres_data:
