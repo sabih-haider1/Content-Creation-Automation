@@ -5,7 +5,7 @@ import json
 import logging
 import httpx
 from datetime import datetime, timedelta, UTC
-from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -16,18 +16,17 @@ from telegram.ext import (
     TypeHandler
 )
 from telegram.request import HTTPXRequest
-from config import TELEGRAM_BOT_TOKEN
+import config
 import db
 import pipeline
 import youtube_uploader
 
-# Force environment variables for ALL libraries (including Google/YouTube)
-# socks5h is CRITICAL for remote DNS resolution via Tor
-TOR_PROXY = "socks5://127.0.0.1:9150"
-os.environ["HTTP_PROXY"] = TOR_PROXY
-os.environ["HTTPS_PROXY"] = TOR_PROXY
-os.environ["http_proxy"] = TOR_PROXY
-os.environ["https_proxy"] = TOR_PROXY
+# Force environment variables if proxy is enabled
+if config.USE_PROXY:
+    os.environ["HTTP_PROXY"] = config.TOR_PROXY
+    os.environ["HTTPS_PROXY"] = config.TOR_PROXY
+    os.environ["http_proxy"] = config.TOR_PROXY
+    os.environ["https_proxy"] = config.TOR_PROXY
 
 # Configure logging
 logging.basicConfig(
@@ -49,6 +48,12 @@ async def log_all_updates(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.info(f"Update: Callback '{update.callback_query.data}' from {update.effective_user.id}")
     else:
         logger.info(f"Update: Received update of type {type(update)}")
+
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
+    """Global handler to catch crashes and prevent bot shutdown."""
+    logger.error(f"Update {update} caused error {context.error}")
+    if isinstance(update, Update) and update.effective_message:
+        await update.effective_message.reply_text("❌ An unexpected error occurred. Please try again.")
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_text = (
@@ -194,7 +199,7 @@ async def create_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     async def run_pipeline():
         try:
-            result = await pipeline.run_content_pipeline(user_prompt, user_id, job_id, status_callback)
+            result = await pipeline.run_content_pipeline(user_prompt, user_id, job_id, status_callback=status_callback)
             video_path = result["video_path"]
             caption = f"🎬 *{result['title']}*\n\n{result['description']}"
             
@@ -202,7 +207,7 @@ async def create_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await context.bot.send_video(chat_id=update.effective_chat.id, video=video_file, caption=caption[:1024], parse_mode="Markdown")
                 
             keyboard = [
-                [InlineKeyboardButton("🚀 Upload Now", callback_data=f"yt_now:{job_id}")],
+                [InlineKeyboardButton("🚀 Publish Now", callback_data=f"yt_now:{job_id}")],
                 [InlineKeyboardButton("📅 Schedule (in 1 hour)", callback_data=f"yt_sched:{job_id}")]
             ]
             await update.message.reply_text("What would you like to do next?", reply_markup=InlineKeyboardMarkup(keyboard))
@@ -269,7 +274,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if action == "yt_now":
-        await query.edit_message_text("🚀 Uploading to YouTube via Tor...")
+        await query.edit_message_text("🚀 Uploading to YouTube...")
         try:
             url = await asyncio.to_thread(youtube_uploader.upload_video, user_id, job["video_path"], job["title"], job["description"], json.loads(job["hashtags"]))
             await db.update_job(job_id, youtube_url=url)
@@ -279,7 +284,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
     elif action == "yt_sched":
         sched_time = (datetime.now(UTC) + timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
-        await query.edit_message_text(f"📅 Scheduling via Tor for {sched_time}...")
+        await query.edit_message_text(f"📅 Scheduling for {sched_time}...")
         try:
             url = await asyncio.to_thread(youtube_uploader.upload_video, user_id, job["video_path"], job["title"], job["description"], json.loads(job["hashtags"]), publish_at=sched_time)
             await db.update_job(job_id, youtube_url=url)
@@ -291,19 +296,19 @@ async def post_init(application):
     await db.init_db()
 
 def main():
-    if not TELEGRAM_BOT_TOKEN:
+    if not config.TELEGRAM_BOT_TOKEN:
         logger.error("TELEGRAM_BOT_TOKEN not found.")
         return
 
-    # Use correctly formatted proxy string and increased timeouts for Tor
+    # Setup conditional proxy
     proxy_request = HTTPXRequest(
-        proxy=TOR_PROXY,
+        proxy=config.TOR_PROXY,
         connect_timeout=60.0,
         read_timeout=60.0,
         write_timeout=60.0
-    )
+    ) if config.USE_PROXY else None
     
-    app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).request(proxy_request).post_init(post_init).build()
+    app = ApplicationBuilder().token(config.TELEGRAM_BOT_TOKEN).request(proxy_request).post_init(post_init).build()
     
     # Debug handler for ALL updates (Group -1 runs first)
     app.add_handler(TypeHandler(Update, log_all_updates), group=-1)
@@ -326,7 +331,10 @@ def main():
     # CallbackQueryHandler for button clicks
     app.add_handler(CallbackQueryHandler(callback_handler))
     
-    print("Bot is starting via Tor (socks5h) with debug logging...")
+    # CRITICAL: Add Global Error Handler
+    app.add_error_handler(error_handler)
+    
+    print(f"Bot is starting (Proxy: {config.USE_PROXY})...")
     app.run_polling()
 
 if __name__ == "__main__":
