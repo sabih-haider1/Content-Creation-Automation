@@ -1,0 +1,6 @@
+Date,Team Member,Task Category,Issue #,Description of Work,Hours Spent,Status,PR Link,Blockers/Notes
+2026-06-15,Sabih,Infrastructure,#1,"Setup persistent Docker volumes and .gitignore",2,Completed,https://github.com/...,None
+2026-06-15,Harmain,Bot & UX,#2,"Drafting /settings menu layout",1,In Progress,,Need final list of voices
+2026-06-15,Jaber,AI & Content,#3,"Testing BeautifulSoup on news sites",3,In Progress,,Some sites have bot protection
+2026-06-15,Umer,Video/TTS,#4,"Researching MoviePy text overlay methods",2,In Progress,,
+2026-06-15,Rehan,Backend/Auth,#5,"Mapping Instagram API endpoints",4,Blocked,,Waiting for Facebook Developer App approval
